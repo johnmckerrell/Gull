@@ -3,6 +3,11 @@
 #define LINUX
 #endif
 
+#ifdef IPHONE
+#define LINUX
+#define MACOSX
+#endif
+
 #define W32_BUILD
 #undef W32_BUILD
 
@@ -526,7 +531,11 @@ GPVEntry * PVHash = NULL;
 
 int RootList[256];
 
+#ifdef IPHONE
+#define prefetch(a,mode)
+#else
 #define prefetch(a,mode) _mm_prefetch(a,mode)
+#endif
 
 uint64 Forward[2][8];
 uint64 West[8];
@@ -1043,6 +1052,11 @@ GHandle SHARED = NULL, HASH = NULL;
 #define UNLOCK(lock) {SET(lock,0);}
 
 // END SMP
+
+#ifdef IPHONE
+#define _mm_pause() usleep(1)
+#define C64
+#endif
 
 __forceinline int lsb(uint64 x);
 __forceinline int msb(uint64 x);
@@ -2090,6 +2104,63 @@ loop:
 #endif
 
 #ifndef W32_BUILD
+
+#ifdef IPHONE
+
+const int index64[64] = {
+    0, 47,  1, 56, 48, 27,  2, 60,
+    57, 49, 41, 37, 28, 16,  3, 61,
+    54, 58, 35, 52, 50, 42, 21, 44,
+    38, 32, 29, 23, 17, 11,  4, 62,
+    46, 55, 26, 59, 40, 36, 15, 53,
+    34, 51, 20, 43, 31, 22, 10, 45,
+    25, 39, 14, 33, 19, 30,  9, 24,
+    13, 18,  8, 12,  7,  6,  5, 63
+};
+
+/**
+ * bitScanForward
+ * @author Kim Walisch (2012)
+ * @param bb bitboard to scan
+ * @precondition bb != 0
+ * @return index (0..63) of least significant one bit
+ */
+int bitScanForward(uint64 bb) {
+    const uint64 debruijn64 = C64(0x03f79d71b4cb0a89);
+    assert (bb != 0);
+    return index64[((bb ^ (bb-1)) * debruijn64) >> 58];
+}
+
+__forceinline int lsb(uint64 x) {
+    return bitScanForward(x);
+}
+
+/**
+ * bitScanReverse
+ * @authors Kim Walisch, Mark Dickinson
+ * @param bb bitboard to scan
+ * @precondition bb != 0
+ * @return index (0..63) of most significant one bit
+ */
+int bitScanReverse(uint64 bb) {
+    const uint64 debruijn64 = C64(0x03f79d71b4cb0a89);
+    assert (bb != 0);
+    bb |= bb >> 1;
+    bb |= bb >> 2;
+    bb |= bb >> 4;
+    bb |= bb >> 8;
+    bb |= bb >> 16;
+    bb |= bb >> 32;
+    return index64[(bb * debruijn64) >> 58];
+}
+
+__forceinline int msb(uint64 x) {
+
+    return bitScanReverse(x);
+}
+
+#else
+
 __forceinline int lsb(uint64 x) {
 	register unsigned long long y;
     __asm__("bsfq %1, %0": "=r"(y): "rm"(x));
@@ -2102,6 +2173,8 @@ __forceinline int msb(uint64 x) {
 	return y;
 }
 
+#endif
+
 __forceinline int popcnt(uint64 x) {
 	x = x - ((x >> 1) & 0x5555555555555555);
 	x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
@@ -2110,7 +2183,11 @@ __forceinline int popcnt(uint64 x) {
 }
 
 template <bool HPopCnt> __forceinline int popcount(uint64 x) {
+#ifdef IPHONE
+    return popcnt(x);
+#else
 	return HPopCnt ? builtin_popcnt_u64(x) : popcnt(x);
+#endif
 }
 #else
 __forceinline int lsb(uint64 x) {
@@ -6950,7 +7027,12 @@ void uci() {
 	}
 }
 
+#ifdef GULL_LIB
+extern "C" int gullMain(int argc, char *argv[]) {
+#else
 int main(int argc, char *argv[]) {
+#endif
+    
 	int i, HT = 0, dobench = 0;
 
 	if (argc >= 2) if (!memcmp(argv[1], "child", 5)) {
@@ -6960,9 +7042,11 @@ int main(int argc, char *argv[]) {
 	}
 	if (argc >= 2) if (!memcmp(argv[1], "bench", 5)) dobench = 1;
 
+#ifndef IPHONE
     unsigned a, b, c, d;
     builtin_cpuid(1, a, b, c, d);
     HardwarePopCnt = ((c >> 23) & 1);
+#endif
 
 	if (parent) {
 #ifdef WINDOWS

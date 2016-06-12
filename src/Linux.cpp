@@ -31,9 +31,11 @@
 #include <string.h>
 #include <time.h>
 
+#ifndef IPHONE
 #include <xmmintrin.h>
-#include <popcntintrin.h>
 #include <x86intrin.h>
+#endif
+#include <popcntintrin.h>
 
 #include <sys/mman.h>
 #include <poll.h>
