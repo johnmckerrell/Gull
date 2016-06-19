@@ -167,6 +167,12 @@ typedef long long sint64;
 #define IsEP(move) (((move) & 0xF000) == 0x2000)
 #define Promotion(move,side) ((side) + (((move) & 0xF000) >> 12))
 
+#include <stdio.h>
+
+FILE * gull_stdout = stdout;
+FILE * gull_stdin = stdin;
+FILE * gull_stderr = stderr;
+
 const uint8 UpdateCastling[64] = {
 	0xFF^CanCastle_OOO,0xFF,0xFF,0xFF,0xFF^(CanCastle_OO|CanCastle_OOO),0xFF,0xFF,0xFF^CanCastle_OO,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -1220,7 +1226,7 @@ void init_openings() {
 			} else opening_positions++;
 		}
 	} else {
-		fprintf(stdout,"File '8moves.epd' not found\n");
+		fprintf(gull_stdout,"File '8moves.epd' not found\n");
 		exit(0);
 		goto no_fen;
 	}
@@ -1233,7 +1239,7 @@ no_fen:
 #ifdef PGN
 	FILE * fpgn = fopen("uci_games.pgn", "r");
 	if (fpgn == NULL) {
-		fprintf(stdout, "File 'uci_games.pgn' not found\n");
+		fprintf(gull_stdout, "File 'uci_games.pgn' not found\n");
 		exit(0);
 	}
 	while (pgn_positions < 65536) {
@@ -1276,7 +1282,7 @@ no_fen:
 		}
 	}
 	fclose(fpgn);
-	fprintf(stdout, "%d PGN positions\n", pgn_positions);
+	fprintf(gull_stdout, "%d PGN positions\n", pgn_positions);
 #endif
 }
 void init_variables() {
@@ -1350,7 +1356,7 @@ void init_variables() {
 			q = strchr(p, '[');
 			for (j = 0; j < var_name_num; j++) if (!memcmp(p, VarName[j].line, (int)(q - p))) break;
 			curr_ind = VarIndex[j];
-			fprintf(stdout, "Array (%d) active=%d var=%.2lf: %s", curr_ind, active, var, VarName[j].line);
+			fprintf(gull_stdout, "Array (%d) active=%d var=%.2lf: %s", curr_ind, active, var, VarName[j].line);
 		}
 		i++;
 		memset(mstring, 0, strlen(mstring));
@@ -1364,7 +1370,7 @@ void init_variables() {
 		do {
 			p++;
 			Variables[curr_ind] = atoi(p); var_number++;
-			if (indexed[curr_ind]) { fprintf(stdout, "index mismatch: %d (%s)\n", curr_ind, VarName[j].line); exit(0); }
+			if (indexed[curr_ind]) { fprintf(gull_stdout, "index mismatch: %d (%s)\n", curr_ind, VarName[j].line); exit(0); }
 			indexed[curr_ind]++;
 			int activate = 0;
 			if (active && active_mask[cnt]) activate = 1;
@@ -1372,8 +1378,8 @@ void init_variables() {
 			Active[curr_ind++] = activate; active_vars += activate; cnt++;
 		} while (p = strchr(p, ','));
 	}
-	for (i = 0; i < curr_ind; i++) if (!indexed[i]) { fprintf(stdout, "index skipped %d\n", i); exit(0); }
-	fprintf(stdout, "%d variables, %d active\n", var_number, active_vars);
+	for (i = 0; i < curr_ind; i++) if (!indexed[i]) { fprintf(gull_stdout, "index skipped %d\n", i); exit(0); }
+	fprintf(gull_stdout, "%d variables, %d active\n", var_number, active_vars);
 }
 void eval_to_cpp(const char * filename, double * list) {
 	FILE * f = fopen(filename, "w");
@@ -1712,14 +1718,14 @@ int match_los(double * one, double * two, int positions, int chunk_size, int dep
 	sprintf(mstring,"$ Number=%d Command=match Depth=%d Positions=%d",cmd_number,depth,chunk_size);
 	sprintf(mstring+strlen(mstring)," First="); log_list(mstring,one,active_vars,false);
 	sprintf(mstring+strlen(mstring)," Second="); log_list(mstring,two,active_vars,false);
-	fseek(stdin,0,SEEK_END);
-	fprintf(stdout,"%s\n",mstring);
+	fseek(gull_stdin,0,SEEK_END);
+	fprintf(gull_stdout,"%s\n",mstring);
 
 	memset(MI,0,sizeof(GMatchInfo));
 	while (pos < positions) {
 		pos += chunk_size;
 start:
-		fgets(mstring,65536,stdin);
+		fgets(mstring,65536,gull_stdin);
 		char * p = strstr(mstring,"Number=");
 		if (p == NULL) goto start;
 		if (atoi(p+7) != cmd_number) goto start;
@@ -1734,7 +1740,7 @@ start:
 #else
 		score = tot_score / (double)(pos / chunk_size);
 #endif
-		if (print) fprintf(stdout,"%.2lf (%d positions played): %d-%d-%d\n",score,pos,MI->wins,MI->draws,MI->losses);
+		if (print) fprintf(gull_stdout,"%.2lf (%d positions played): %d-%d-%d\n",score,pos,MI->wins,MI->draws,MI->losses);
 		if (total <= 0.99) continue;
 		ratio = wins/total;
 		stdev = 0.5/sqrt(total);
@@ -1787,11 +1793,11 @@ void NormalizeVar(double * base, double * base_var, int depth, int positions, do
 	int i, j;
 	double A[MaxVariables], r, value, curr_var;
 
-	fprintf(stdout,"NormalizeVar(): depth=%d, positions=%d, radius=%.2lf, target=%.2lf\n",depth,positions,radius,target); 
+	fprintf(gull_stdout,"NormalizeVar(): depth=%d, positions=%d, radius=%.2lf, target=%.2lf\n",depth,positions,radius,target); 
 	for (i = 0; i < active_vars; i++) {
 		double_to_double(A,base,active_vars);
 		curr_var = base_var[i];
-		fprintf(stdout,"Variable %d (%.2lf):\n",i,curr_var);
+		fprintf(gull_stdout,"Variable %d (%.2lf):\n",i,curr_var);
 		for (j = 0; j < 10; j++) {
 			A[i] = base[i] + (radius * curr_var);
 			match_los(base,A,positions,16,depth,0.0,0.0,0.0,0.0,MatchInfo,false);
@@ -1799,14 +1805,14 @@ void NormalizeVar(double * base, double * base_var, int depth, int positions, do
 			value = elo_from_ratio(r * 0.01);
 			if (value < target) break;
 			curr_var = curr_var * MinF(sqrt(target/Max(value, 1.0)),1.5);
-			fprintf(stdout,"(%.2lf,%.2lf)\n",value,curr_var);
+			fprintf(gull_stdout,"(%.2lf,%.2lf)\n",value,curr_var);
 			if (curr_var > base_var[i]) {
 				curr_var = base_var[i];
 				break;
 			}
 		}
 		var[i] = curr_var;
-		fprintf(stdout, "(%.2lf,%.2lf)\n", value, curr_var);
+		fprintf(gull_stdout, "(%.2lf,%.2lf)\n", value, curr_var);
 	}
 	log_list("var.txt",var,active_vars);
 }
@@ -1820,20 +1826,20 @@ void Gradient(double * base, double * var, int depth, int iter, int pos_per_iter
 	int i, j, cnt = 0;
 	cmd_number++;
 
-	fprintf(stdout,"Gradient(): depth=%d, iter=%d, pos_per_iter=%d, max_positions=%d, radius=%.2lf\n",depth,iter,pos_per_iter,max_positions,radius);
+	fprintf(gull_stdout,"Gradient(): depth=%d, iter=%d, pos_per_iter=%d, max_positions=%d, radius=%.2lf\n",depth,iter,pos_per_iter,max_positions,radius);
 	memset(A,0,4 * sizeof(GGradient));
 	memset(grad,0,active_vars * sizeof(double));
 
 	memset(mstring,0,strlen(mstring));
 	sprintf(mstring,"$ Number=%d Command=gradient Depth=%d Iter=%d Positions=%d Radius=%lf Var=",cmd_number,depth,iter,pos_per_iter,radius); log_list(mstring,Var,active_vars,false);
 	sprintf(mstring+strlen(mstring)," Base="); log_list(mstring,Base,active_vars,false);
-	fseek(stdin,0,SEEK_END);
-	fprintf(stdout,"%s\n",mstring);
+	fseek(gull_stdin,0,SEEK_END);
+	fprintf(gull_stdout,"%s\n",mstring);
 
 	while (cnt < max_positions) {
 		for (j = 0; j < 4; j++) {
 start:
-			fgets(mstring,65536,stdin);
+			fgets(mstring,65536,gull_stdin);
 			char * p = strstr(mstring,"Number=");
 			if (p == NULL) goto start;
 			if (atoi(p+7) != cmd_number) goto start;
@@ -1853,8 +1859,8 @@ start:
 		av = Min(0.99999,Max(-0.99999,av));
 		angle = (acos(av) * 180.0)/3.1415926535;
 		cnt += 4 * pos_per_iter * iter;
-		fprintf(stdout,"%d positions: angle = %.2lf, gradient = ",cnt,angle);
-		log_list(stdout,grad,active_vars);
+		fprintf(gull_stdout,"%d positions: angle = %.2lf, gradient = ",cnt,angle);
+		log_list(gull_stdout,grad,active_vars);
 		if (angle < angle_target) break;
 		FILE * fgrad = fopen("gradient.txt","w");
 		log_list(fgrad,grad,active_vars);
@@ -1866,17 +1872,17 @@ void GD(double * base, double * var, int depth, double radius, double min_radius
 	double Grad[MaxVariables], a, br, A[MaxVariables], B[MaxVariables];
 	FILE * fbest = fopen("gd.txt","w"); fclose(fbest);
 
-	fprintf(stdout,"GD()\n");
+	fprintf(gull_stdout,"GD()\n");
 	while (true) {
 start:
 		fbest = fopen("gd.txt","a"); fprintf(fbest,"radius = %.2lf:\n",radius); log_list(fbest,base,active_vars); fclose(fbest);
-		log_list(stdout,base,active_vars);
+		log_list(gull_stdout,base,active_vars);
 		//radius = 2.0; read_list("(0.05,-0.04,-0.00,0.04,0.09,-0.10,-0.00,0.06,-0.14,-0.08,-0.06,0.05,-0.21,-0.10,-0.03,0.04,0.06,-0.01,-0.04,0.06,0.01,-0.05,-0.02,-0.06,-0.05,0.14,0.18,-0.01,-0.01,0.02,-0.11,0.05,-0.00,0.18,-0.15,-0.02,0.03,0.01,-0.06,-0.07,-0.03,0.11,0.13,-0.07,0.06,0.02,-0.01,0.06,-0.07,-0.09,0.01,-0.09,0.13,-0.03,0.04,0.03,-0.04,0.16,0.03,-0.21,-0.01,0.04,-0.03,-0.11,0.00,-0.03,-0.03,-0.11,-0.00,-0.06,0.04,-0.05,0.00,-0.03,-0.12,0.00,-0.07,-0.13,-0.08,0.10,0.11,0.03,0.08,0.12,-0.05,-0.07,-0.01,-0.02,0.08,-0.12,-0.05,0.02,0.03,0.13,-0.08,0.05,0.04,0.02,-0.00,0.06,-0.06,-0.07,-0.00,0.05,-0.09,-0.16,-0.02,-0.07,0.16,-0.24,0.09,0.04,-0.09,0.03,-0.06,0.01,-0.05,0.00,-0.10,-0.02,-0.12,-0.05,-0.05,0.07,0.14,0.16,-0.07,0.03,-0.06,-0.16,-0.03,0.04,-0.04,0.02,-0.12,-0.18,0.01,-0.04,-0.04,-0.18,0.08,0.09,-0.06,-0.00,0.02,-0.03,0.10,0.04,-0.02)", Grad, active_vars);
 		Gradient(base,var,depth,32,1,max_grad_positions,radius,angle_target,Grad);
 		min_radius = Min(radius * 0.45, min_radius);
 		a = radius;
 		while (a >= min_radius) {
-			fprintf(stdout,"Verification %.2lf:\n",a); 
+			fprintf(gull_stdout,"Verification %.2lf:\n",a); 
 			compute_list(A,base,Grad,var,a);
 			//eval_to_cpp("gd.cpp", A);
 			if (match_los(A,base,max_line_positions,32,depth,high,low,uh,ul,MatchInfo,true) == 1) {
@@ -1886,14 +1892,14 @@ start:
 				double_to_double(base,A,active_vars);
 				log_list("gd.txt",base,active_vars);
 				eval_to_cpp("gd.cpp", base);
-				fprintf(stdout,"New best: "); log_list(stdout,base,active_vars);
-				fprintf(stdout,"Try %.2lf:\n",a);
+				fprintf(gull_stdout,"New best: "); log_list(gull_stdout,base,active_vars);
+				fprintf(gull_stdout,"Try %.2lf:\n",a);
 				if (match_los(B,A,max_line_positions,32,depth,2.0,2.0,2.0,0.0,MatchInfo,true) == 1) {
 					br = a;
 					double_to_double(base,B,active_vars);
 					log_list("gd.txt",base,active_vars);
 					eval_to_cpp("gd.cpp", base);
-					fprintf(stdout,"New best: "); log_list(stdout,base,active_vars);
+					fprintf(gull_stdout,"New best: "); log_list(gull_stdout,base,active_vars);
 				}
 				if (br < radius * 0.29) radius *= 0.7;
 				goto start;
@@ -1909,8 +1915,8 @@ void get_command() {
 	char * p;
 
 	if (RecordGames) Buffer[0] = 0;
-	fgets(mstring,65536,stdin);
-	fseek(stdin,0,SEEK_END);
+	fgets(mstring,65536,gull_stdin);
+	fseek(gull_stdin,0,SEEK_END);
 	p = strstr(mstring,"Command=");
 	if (p == NULL) return;
 	if (!memcmp(p+8,"gradient",8)) mode = mode_grad;
@@ -1927,7 +1933,7 @@ void get_command() {
 		gradient(Base,Var,iter,positions,depth,radius,Grad);
 		memset(mstring,0,strlen(mstring));
 		sprintf(mstring,"$ Number=%d Grad=",number); log_list(mstring,Grad,active_vars,true);
-		fprintf(stdout,"%s\n",mstring);
+		fprintf(gull_stdout,"%s\n",mstring);
 	} else if (mode == mode_match) {
 		p = strstr(mstring,"First="); read_list(p,FE,active_vars);
 		p = strstr(mstring,"Second="); read_list(p,SE,active_vars);
@@ -1939,7 +1945,7 @@ void get_command() {
 		}
 		memset(mstring,0,strlen(mstring));
 		sprintf(mstring,"$ Number=%d Result=%lf Wins=%d Draws=%d Losses=%d",number,r,MatchInfo->wins,MatchInfo->draws,MatchInfo->losses); 
-		fprintf(stdout,"%s\n",mstring);
+		fprintf(gull_stdout,"%s\n",mstring);
 	} else nodes /= 0;
 }
 int get_mat_index(int wq, int bq, int wr, int br, int wl, int bl, int wd, int bd, int wn, int bn, int wp, int bp) {
@@ -1990,7 +1996,7 @@ void pgn_stat() {
 loop:
 	fpgn = fopen("D:/Development/G3T/games.pgn", "r");
 	if (fpgn == NULL) {
-		fprintf(stdout, "File 'games.pgn' not found\n"); getchar();
+		fprintf(gull_stdout, "File 'games.pgn' not found\n"); getchar();
 		exit(0);
 	}
 	double stat = 0.0, est = 0.0;
@@ -2059,7 +2065,7 @@ loop:
 	}
 	fclose(fpgn);
 	if (!iter) {
-		for (int i = 0; i < 64; i++) fprintf(stdout, "ratio(eval x %.2lf) in (%.2lf, %.2lf), score = %.2lf\n", elo_eval_ratio, 50.0 + (double)i, 50.0 + (double)(i + 1), (Eval[i].score * 100.0) / Max(1.0, (double)Eval[i].cnt));
+		for (int i = 0; i < 64; i++) fprintf(gull_stdout, "ratio(eval x %.2lf) in (%.2lf, %.2lf), score = %.2lf\n", elo_eval_ratio, 50.0 + (double)i, 50.0 + (double)(i + 1), (Eval[i].score * 100.0) / Max(1.0, (double)Eval[i].cnt));
 		iter++;
 		goto loop;
 	}
@@ -2099,7 +2105,7 @@ loop:
 	}
 	fprintf(fmat, "}; %d\n", mat_cnt * 2);
 	fclose(fmat);
-	fprintf(stdout, "Press any key...\n");
+	fprintf(gull_stdout, "Press any key...\n");
 }
 #endif
 
@@ -5735,8 +5741,8 @@ template <bool me, bool root> int pv_search(int alpha, int beta, int depth, int 
 		flags |= ExtFlag(1);
 		if (F(RootList[0])) return 0;
 	    if (Print) {
-			fprintf(stdout,"info depth %d\n",(depth/2)); 
-			fflush(stdout);
+			fprintf(gull_stdout,"info depth %d\n",(depth/2)); 
+			fflush(gull_stdout);
 		}
 		int * p;
 		for (p = RootList; *p; p++);
@@ -6219,7 +6225,7 @@ finish:
 
 template <bool me> int multipv(int depth) {
 	int move, low = MateValue, value, i, cnt, ext, new_depth = depth;
-	fprintf(stdout,"info depth %d\n",(depth/2)); fflush(stdout);
+	fprintf(gull_stdout,"info depth %d\n",(depth/2)); fflush(gull_stdout);
 	for (cnt = 0; cnt < PVN && T(move = (MultiPV[cnt] & 0xFFFF)); cnt++) {
 		MultiPV[cnt] = move;
 		move_to_string(move,score_string);
@@ -6330,10 +6336,10 @@ void send_pv(int depth, int alpha, int beta, int score) {
 #endif
 	if (nps) nps = (snodes * 1000)/nps; 
 	if (score < beta) {
-		if (score <= alpha) fprintf(stdout,"info depth %d seldepth %d score %s%d upperbound nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
-		else fprintf(stdout,"info depth %d seldepth %d score %s%d nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
-	} else fprintf(stdout,"info depth %d seldepth %d score %s%d lowerbound nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
-	fflush(stdout);
+		if (score <= alpha) fprintf(gull_stdout,"info depth %d seldepth %d score %s%d upperbound nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
+		else fprintf(gull_stdout,"info depth %d seldepth %d score %s%d nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
+	} else fprintf(gull_stdout,"info depth %d seldepth %d score %s%d lowerbound nodes %lld nps %lld tbhits %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,tbhits,pv_string);
+	fflush(gull_stdout);
 }
 
 void send_multipv(int depth, int curr_number) {
@@ -6396,8 +6402,8 @@ void send_multipv(int depth, int curr_number) {
 		snodes = nodes;
 #endif
 	    if (nps) nps = (snodes * 1000)/nps; 
-		fprintf(stdout,"info multipv %d depth %d score %s%d nodes %lld nps %lld tbhits %lld pv %s\n",j + 1,(j <= curr_number ? depth : depth - 1),score_string,score,snodes,nps,tbhits,pv_string);
-		fflush(stdout);
+		fprintf(gull_stdout,"info multipv %d depth %d score %s%d nodes %lld nps %lld tbhits %lld pv %s\n",j + 1,(j <= curr_number ? depth : depth - 1),score_string,score,snodes,nps,tbhits,pv_string);
+		fflush(gull_stdout);
 	}
 }
 
@@ -6415,7 +6421,7 @@ void send_best_move() {
 	snodes = nodes;
 #endif
 	snodes += (snodes == 0);
-	fprintf(stdout,"info nodes %lld score cp %d\n",snodes,best_score);
+	fprintf(gull_stdout,"info nodes %lld score cp %d\n",snodes,best_score);
 	if (!best_move) return;
 	Current = Data;
 	evaluate();
@@ -6430,9 +6436,9 @@ void send_best_move() {
 	move_to_string(best_move,pv_string);
 	if (ponder) {
 		move_to_string(ponder,score_string);
-		fprintf(stdout,"bestmove %s ponder %s\n",pv_string,score_string);
-	} else fprintf(stdout,"bestmove %s\n",pv_string);
-	fflush(stdout);
+		fprintf(gull_stdout,"bestmove %s ponder %s\n",pv_string,score_string);
+	} else fprintf(gull_stdout,"bestmove %s\n",pv_string);
+	fflush(gull_stdout);
 }
 
 void get_position(char string[]) {
@@ -6619,9 +6625,9 @@ void check_time(int searching) {
 	if (T(Print) && Time > InfoLag && CurrTime - InfoTime > InfoDelay) {
 		InfoTime = CurrTime;
 		if (info_string[0]) {
-			fprintf(stdout,"%s",info_string);
+			fprintf(gull_stdout,"%s",info_string);
 			info_string[0] = 0;
-			fflush(stdout);
+			fflush(gull_stdout);
 		}
 	}
 	if (time_to_stop(CurrentSI, Time, searching)) goto jump;
@@ -6646,9 +6652,9 @@ void check_time(int time, int searching) {
 	if (T(Print) && Time > InfoLag && CurrTime - InfoTime > InfoDelay) {
 		InfoTime = CurrTime;
 		if (info_string[0]) {
-			fprintf(stdout,"%s",info_string);
+			fprintf(gull_stdout,"%s",info_string);
 			info_string[0] = 0;
-			fflush(stdout);
+			fflush(gull_stdout);
 		}
 	}
 	if (time_to_stop(CurrentSI, time, searching)) goto jump;
@@ -6780,7 +6786,7 @@ void epd_test(const char *string, int time_limit) {
 	char * ptr;
 	FILE * f = fopen(string, "r");
 	if (f == NULL) {
-		fprintf(stdout, "File not found\n");
+		fprintf(gull_stdout, "File not found\n");
 		return;
 	}
 	Infinite = 1;
@@ -6828,10 +6834,10 @@ void epd_test(const char *string, int time_limit) {
 #endif
 			total_depth += LastDepth / 2;
 #ifndef TIME_TO_DEPTH
-			fprintf(stdout, "Position %d: %d [%lf, %d]\n", n, LastDepth / 2, ((double)total_depth) / ((double)n), (all_nodes * Convert(1000, uint64)) / total_time);
+			fprintf(gull_stdout, "Position %d: %d [%lf, %d]\n", n, LastDepth / 2, ((double)total_depth) / ((double)n), (all_nodes * Convert(1000, uint64)) / total_time);
 #else
 			prod += log((double)new_time);
-			fprintf(stdout, "Position %d: %lld [%.0lf, %lld]\n", n, new_time, exp(prod / (double)n), (all_nodes * Convert(1000, uint64)) / total_time);
+			fprintf(gull_stdout, "Position %d: %lld [%.0lf, %lld]\n", n, new_time, exp(prod / (double)n), (all_nodes * Convert(1000, uint64)) / total_time);
 #endif
 			goto new_position;
 		}
@@ -6850,7 +6856,7 @@ void epd_test(const char *string, int time_limit) {
 		}
 	}
 	if (n == 0) {
-		fprintf(stdout, "Empty file\n");
+		fprintf(gull_stdout, "Empty file\n");
 		return;
 	}
 	fclose(f);
@@ -6865,7 +6871,7 @@ void bench(int argc, char **argv) {
 		sprintf(mstring, "go depth %u\n", depth);
 		get_time_limit(mstring);
 	}
-	fprintf(stderr, "time: %lld\n", get_time() - t0);
+	fprintf(gull_stderr, "time: %lld\n", get_time() - t0);
 	exit(0);
 }
 
@@ -6874,57 +6880,57 @@ void uci() {
 	int i;
 	sint64 value;
 
-    (void)fgets(mstring, 65536, stdin);
-    if (feof(stdin)) exit(0);
+    (void)fgets(mstring, 65536, gull_stdin);
+    if (feof(gull_stdin)) exit(0);
     ptr = strchr(mstring, '\n');
     if (ptr != NULL) *ptr = 0;
     if (!strcmp(mstring, "uci")) {
 #ifdef TB
 #ifndef W32_BUILD
-		fprintf(stdout,"id name Gull 3 x64 (syzygy)\n");
+		fprintf(gull_stdout,"id name Gull 3 x64 (syzygy)\n");
 #else
-		fprintf(stdout,"id name Gull 3 (syzygy)\n");
+		fprintf(gull_stdout,"id name Gull 3 (syzygy)\n");
 #endif
 #else
 #ifndef W32_BUILD
-		fprintf(stdout,"id name Gull 3 x64\n");
+		fprintf(gull_stdout,"id name Gull 3 x64\n");
 #else
-		fprintf(stdout,"id name Gull 3\n");
+		fprintf(gull_stdout,"id name Gull 3\n");
 #endif
 #endif
-        fprintf(stdout,"id author ThinkingALot\n");
+        fprintf(gull_stdout,"id author ThinkingALot\n");
 #ifndef W32_BUILD
-		fprintf(stdout,"option name Hash type spin min 1 max 65536 default 16\n");
+		fprintf(gull_stdout,"option name Hash type spin min 1 max 65536 default 16\n");
 #else
-		fprintf(stdout,"option name Hash type spin min 1 max 1024 default 16\n");
+		fprintf(gull_stdout,"option name Hash type spin min 1 max 1024 default 16\n");
 #endif
-		fprintf(stdout,"option name Ponder type check default false\n");
-		fprintf(stdout,"option name MultiPV type spin min 1 max 64 default 1\n");
-		fprintf(stdout,"option name Clear Hash type button\n");
-		fprintf(stdout,"option name PV Hash type check default true\n");
-		fprintf(stdout,"option name Aspiration window type check default true\n");
+		fprintf(gull_stdout,"option name Ponder type check default false\n");
+		fprintf(gull_stdout,"option name MultiPV type spin min 1 max 64 default 1\n");
+		fprintf(gull_stdout,"option name Clear Hash type button\n");
+		fprintf(gull_stdout,"option name PV Hash type check default true\n");
+		fprintf(gull_stdout,"option name Aspiration window type check default true\n");
 #ifdef CPU_TIMING
-		fprintf(stdout, "option name CPUTiming type check default false\n");
-		fprintf(stdout, "option name MaxDepth type spin min 0 max 128 default 0\n");
-		fprintf(stdout, "option name MaxKNodes type spin min 0 max 65536 default 0\n");
-		fprintf(stdout, "option name BaseTime type spin min 0 max 1000000 default 1000\n");
-		fprintf(stdout, "option name IncTime type spin min 0 max 1000000 default 5\n");
+		fprintf(gull_stdout, "option name CPUTiming type check default false\n");
+		fprintf(gull_stdout, "option name MaxDepth type spin min 0 max 128 default 0\n");
+		fprintf(gull_stdout, "option name MaxKNodes type spin min 0 max 65536 default 0\n");
+		fprintf(gull_stdout, "option name BaseTime type spin min 0 max 1000000 default 1000\n");
+		fprintf(gull_stdout, "option name IncTime type spin min 0 max 1000000 default 5\n");
 #endif
-		fprintf(stdout, "option name Threads type spin min 1 max %d default %d\n", Min(CPUs, MaxPrN), PrN);
+		fprintf(gull_stdout, "option name Threads type spin min 1 max %d default %d\n", Min(CPUs, MaxPrN), PrN);
 #ifdef LARGE_PAGES
-		fprintf(stdout, "option name Large memory pages type check default true\n");
+		fprintf(gull_stdout, "option name Large memory pages type check default true\n");
 #endif
 #ifdef TB
-		fprintf(stdout, "option name SyzygyPath type string default <empty>\n");
+		fprintf(gull_stdout, "option name SyzygyPath type string default <empty>\n");
 #endif
-        fprintf(stdout,"uciok\n");
+        fprintf(gull_stdout,"uciok\n");
 		if (F(Searching)) init_search(1);
     } else if (!strcmp(mstring,"ucinewgame")) {
         Stop = 0;
 		init_search(1);
     } else if (!strcmp(mstring,"isready")) {
-        fprintf(stdout,"readyok\n");
-		fflush(stdout);
+        fprintf(gull_stdout,"readyok\n");
+		fflush(gull_stdout);
     }  else if (!memcmp(mstring,"position",8)) {
         if (F(Searching)) get_position(mstring);
     } else if (!memcmp(mstring,"go",2)) {
@@ -7026,9 +7032,15 @@ void uci() {
 		epd_test("op.epd", value);
 	}
 }
+    
+extern "C" void gull_set_file_handles(FILE *in, FILE *out, FILE *err) {
+    gull_stdin = in;
+    gull_stdout = out;
+    gull_stderr = err;
+}
 
 #ifdef GULL_LIB
-extern "C" int gullMain(int argc, char *argv[]) {
+extern "C" int gull_main(int argc, char *argv[]) {
 #else
 int main(int argc, char *argv[]) {
 #endif
@@ -7121,24 +7133,24 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
-	setbuf(stdout, NULL);
-	setbuf(stdin, NULL);
-	setvbuf(stdout, NULL, _IONBF, 0);
-	setvbuf(stdin, NULL, _IONBF, 0);
+	setbuf(gull_stdout, NULL);
+	setbuf(gull_stdin, NULL);
+	setvbuf(gull_stdout, NULL, _IONBF, 0);
+	setvbuf(gull_stdin, NULL, _IONBF, 0);
 	fflush(NULL);
 
     if (parent)
 #ifdef TB
 #ifndef W32_BUILD
-		fprintf(stdout, "Gull 3 x64 (syzygy)\n");
+		fprintf(gull_stdout, "Gull 3 x64 (syzygy)\n");
 #else
-		fprintf(stdout, "Gull 3 (syzygy)\n");
+		fprintf(gull_stdout, "Gull 3 (syzygy)\n");
 #endif
 #else
 #ifndef W32_BUILD
-	    fprintf(stdout, "Gull 3 x64\n");
+	    fprintf(gull_stdout, "Gull 3 x64\n");
 #else
-	    fprintf(stdout, "Gull 3\n");
+	    fprintf(gull_stdout, "Gull 3\n");
 #endif
 #endif
 
@@ -7185,7 +7197,7 @@ reset_jump:
 	fexplain = fopen("evaluation.txt", "w");
 	explain = 1; evaluate(); 
 	fclose(fexplain); 
-	fprintf(stdout, "Press any key...\n"); getchar(); exit(0);
+	fprintf(gull_stdout, "Press any key...\n"); getchar(); exit(0);
 #endif
 
 #ifdef TUNER
@@ -7194,7 +7206,7 @@ reset_jump:
 		else if (!memcmp(argv[1], "server", 6)) Server = 1;
 		if (Client || Server) Local = 0;
 	}
-	fprintf(stdout, Client ? "Client\n" : (Server ? "Server\n" : "Local\n"));
+	fprintf(gull_stdout, Client ? "Client\n" : (Server ? "Server\n" : "Local\n"));
 
 	uint64 ctime; QueryProcessCycleTime(GetCurrentProcess(), &ctime); srand(time(NULL) + 123 * GetProcessId(GetCurrentProcess()) + ctime);
 	QueryProcessCycleTime(GetCurrentProcess(), &ctime); seed = (uint64)(time(NULL) + 345 * GetProcessId(GetCurrentProcess()) + ctime);
@@ -7230,7 +7242,7 @@ reset_jump:
 
 	double New[1024]; read_list("(5.07,27.02,27.37,15.16,28.60,14.62,40.93,8.61,14.02,172.58,178.09,180.83,457.03,128.24,172.66,178.21,343.44,1281.53,45.85)", New, active_vars);
 	for (i = 7; i < 64; i++) {
-		fprintf(stdout, "\ndepth = %d/%d: \n", i, i + 1);
+		fprintf(gull_stdout, "\ndepth = %d/%d: \n", i, i + 1);
 		match_los(New, Base, 4 * 1024, 128, i, 3.0, 3.0, 0.0, 0.0, MatchInfo, 1);
 	}
 #endif

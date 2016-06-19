@@ -9,6 +9,7 @@
 #ifndef Gull_h
 #define Gull_h
 
-int gullMain(int argc, char *argv[]);
+int gull_main(int argc, char *argv[]);
+void gull_set_file_handles(FILE *in, FILE *out, FILE *err);
 
 #endif /* Gull_h */
