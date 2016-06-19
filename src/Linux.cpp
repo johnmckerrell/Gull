@@ -131,7 +131,7 @@ int input()
 /*
  * Create a child process and return its ID.
  */
-int main(int argc, char **argv);        // Forward decl.
+extern "C" int GULLMAIN(int argc, char **argv);        // Forward decl.
 GProcess CreateChildProcess(int child_id)
 {
     GProcess id = fork();
@@ -161,7 +161,7 @@ GProcess CreateChildProcess(int child_id)
         child_id_buf,
         NULL
     };
-    ret = main(4, (char **)argv);
+    ret = GULLMAIN(4, (char **)argv);
     exit(ret);
 }
 

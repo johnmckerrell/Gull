@@ -50,6 +50,12 @@
 #define TIME_TO_DEPTH
 //#undef TIME_TO_DEPTH
 
+#ifdef GULL_LIB
+#define GULLMAIN gull_main
+#else
+#define GULLMAIN main
+#endif
+
 typedef unsigned char uint8;
 typedef char sint8;
 typedef unsigned short uint16;
@@ -7039,11 +7045,7 @@ extern "C" void gull_set_file_handles(FILE *in, FILE *out, FILE *err) {
     gull_stderr = err;
 }
 
-#ifdef GULL_LIB
-extern "C" int gull_main(int argc, char *argv[]) {
-#else
-int main(int argc, char *argv[]) {
-#endif
+extern "C" int GULLMAIN(int argc, char *argv[]) {
     
 	int i, HT = 0, dobench = 0;
 
