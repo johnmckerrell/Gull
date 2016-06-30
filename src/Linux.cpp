@@ -123,7 +123,7 @@ int input()
 {
     struct pollfd fds;
     int ret;
-    fds.fd = 0;     // stdin
+    fds.fd = fileno(gull_stdin);     // stdin
     fds.events = POLLIN;
     return poll(&fds, 1, 0);
 }
