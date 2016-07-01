@@ -1233,7 +1233,7 @@ void init_openings() {
 		}
 	} else {
 		fprintf(gull_stdout,"File '8moves.epd' not found\n");
-		exit(0);
+		throw(0);
 		goto no_fen;
 	}
 	fclose(ffen);
@@ -1246,7 +1246,7 @@ no_fen:
 	FILE * fpgn = fopen("uci_games.pgn", "r");
 	if (fpgn == NULL) {
 		fprintf(gull_stdout, "File 'uci_games.pgn' not found\n");
-		exit(0);
+		throw(0);
 	}
 	while (pgn_positions < 65536) {
 		fgets(mstring, 65536, fpgn);
@@ -1376,7 +1376,7 @@ void init_variables() {
 		do {
 			p++;
 			Variables[curr_ind] = atoi(p); var_number++;
-			if (indexed[curr_ind]) { fprintf(gull_stdout, "index mismatch: %d (%s)\n", curr_ind, VarName[j].line); exit(0); }
+			if (indexed[curr_ind]) { fprintf(gull_stdout, "index mismatch: %d (%s)\n", curr_ind, VarName[j].line); throw(0); }
 			indexed[curr_ind]++;
 			int activate = 0;
 			if (active && active_mask[cnt]) activate = 1;
@@ -1384,7 +1384,7 @@ void init_variables() {
 			Active[curr_ind++] = activate; active_vars += activate; cnt++;
 		} while (p = strchr(p, ','));
 	}
-	for (i = 0; i < curr_ind; i++) if (!indexed[i]) { fprintf(gull_stdout, "index skipped %d\n", i); exit(0); }
+	for (i = 0; i < curr_ind; i++) if (!indexed[i]) { fprintf(gull_stdout, "index skipped %d\n", i); throw(0); }
 	fprintf(gull_stdout, "%d variables, %d active\n", var_number, active_vars);
 }
 void eval_to_cpp(const char * filename, double * list) {
@@ -2003,7 +2003,7 @@ loop:
 	fpgn = fopen("D:/Development/G3T/games.pgn", "r");
 	if (fpgn == NULL) {
 		fprintf(gull_stdout, "File 'games.pgn' not found\n"); getchar();
-		exit(0);
+		throw(0);
 	}
 	double stat = 0.0, est = 0.0;
 	int cnt = 0;
@@ -6869,7 +6869,7 @@ void epd_test(const char *string, int time_limit) {
 }
 
 void bench(int argc, char **argv) {
-	if (argc == 0) exit(1);
+	if (argc == 0) throw(1);
 	unsigned depth = atoi(argv[0]);
 	long long t0 = get_time();
 	for (int i = 1; i < argc; i++) {
@@ -6878,7 +6878,7 @@ void bench(int argc, char **argv) {
 		get_time_limit(mstring);
 	}
 	fprintf(gull_stderr, "time: %lld\n", get_time() - t0);
-	exit(0);
+	throw(0);
 }
 
 void uci() {
@@ -6887,7 +6887,7 @@ void uci() {
 	sint64 value;
 
     (void)fgets(mstring, 65536, gull_stdin);
-    if (feof(gull_stdin)) exit(0);
+    if (feof(gull_stdin)) throw(0);
     ptr = strchr(mstring, '\n');
     if (ptr != NULL) *ptr = 0;
     if (!strcmp(mstring, "uci")) {
@@ -7031,7 +7031,7 @@ void uci() {
 			CloseHandle(ChildPr[i]);
 		}
 #endif
-		exit(0);
+		throw(0);
 	} else if (!memcmp(mstring, "epd", 3)) {
 		ptr = mstring + 4;
 		value = atoi(ptr);
@@ -7199,7 +7199,7 @@ reset_jump:
 	fexplain = fopen("evaluation.txt", "w");
 	explain = 1; evaluate(); 
 	fclose(fexplain); 
-	fprintf(gull_stdout, "Press any key...\n"); getchar(); exit(0);
+	fprintf(gull_stdout, "Press any key...\n"); getchar(); throw(0);
 #endif
 
 #ifdef TUNER
@@ -7249,5 +7249,10 @@ reset_jump:
 	}
 #endif
 
-	while (true) uci();
+    try {
+        while (true) uci();
+    } catch (int e) {
+        printf("threw %d\n", e);
+        return e;
+    }
 }
