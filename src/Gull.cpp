@@ -1137,7 +1137,7 @@ void uci();
 #endif
 
 #ifdef LINUX
-#include "Linux.cpp"
+#include "Linux.cpp.h"
 #endif
 
 #ifdef WINDOWS
