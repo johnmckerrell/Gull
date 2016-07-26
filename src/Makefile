@@ -13,7 +13,7 @@ ifeq ($(UNAME),Darwin)
 endif
 CC=g++
 STRIP=strip
-CFLAGS=-msse4.1 -mpopcnt -fno-exceptions -fno-rtti -Wno-parentheses -O3
+CFLAGS=-msse4.1 -mpopcnt -fexceptions -fno-rtti -Wno-parentheses -O3
 
 main: $(TARGET)
 
